@@ -1,0 +1,130 @@
+<HTML>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Colin Pesyna</title>
+
+    <style type="text/css">
+        body {
+            font-size: 120%;
+        }
+        #container {
+            margin: 0 auto;
+            width: 900px;
+        }
+        a {text-decoration: underline;}
+        a:link {text-decoration: underline;}
+        a:visited {text-decoration: underline;}
+        h1 {font-size: 2em; margin-bottom: 3px;}
+        h2 {font-size: 1.5em; text-align: left;}
+        a {}
+        hr {border: 0; width: 90%; border-bottom: 1px solid #aaa}
+        pre {
+            white-space: pre-wrap;
+            white-space: -moz-pre-wrap;
+            white-space: -o-pre-wrap;
+            padding: 0.5em 1em;
+            border: 2px solid #000000;
+            background: #dedad0;
+        }
+    </style>
+</head>
+
+<body>
+<div id="container"> 
+<tt>
+<h1 id="Title">Don't let your model flatter itself</h1>
+
+It's a well known statistical sin to use training data to evaluate a model's
+predictive powers, but there's a seductive temptation to assume that such a
+procedure must be able to give you <i>some</i> modicum of insight into your model's
+quality. To illustrate how far astray this reasoning can lead you, I developed
+a little R script that takes completely random data points and assigns them
+completely random categories, fits a <a
+href="http://en.wikipedia.org/wiki/Lasso_%28statistics%29#Lasso_method">Lasso-penalized</a>
+logistic regression, and computes the ROC and AUC statistic using the training
+data. This looks quite impressive, but when the model is applied to the held
+out test data, it (rightly!) scores ~50% accuracy most of the time.
+
+<h3 id="Procedure">The Demonstration</h3>
+
+Using R's <a href="http://caret.r-forge.r-project.org/">caret</a> package, I produced training and test data:
+<pre><code>require(caret)
+set.seed(1987)
+nr = 100
+nc = 100 
+data <- matrix(rnorm(nr * nc), nr, nc) 
+outcome <- factor(sample(0:1, nr, replace = T)) 
+inTraining <- createDataPartition(outcome, p = 0.70, list = FALSE)
+training <- data[inTraining, ]
+testing <- data[-inTraining, ]
+trOutcomes <- outcome[inTraining]
+testOutcomes <- outcome[-inTraining]
+</code></pre>
+<p>Obviously, there is no reason to expect any true relationship between the
+outcomes and predictors. We can see that by taking a look at a plot of the
+all the variables:</p>
+
+<img src="data_dist_tiny.png" alt="Created with vim" border="0"/>
+<p>
+Now, with 100 predictor variables there will surely be some chance
+relationships to be found in the training set. We can use Lasso to pick a nice
+subset of variables for us:
+<pre><code>require(glmnet)
+fit1 <- glmnet(training, trOutcomes, family = 'binomial', alpha = 1, lambda = 0.1)
+</code></pre>
+</p>
+
+<p>Since this data is pure noise, when we use this model on the held out test set,
+we fully expect to score ~50% accuracy.</p>
+
+<p>
+<pre><code>test_preds <- round(plogis(predict(fit1, testing)))
+cat('True accuracy:', sum(test_preds == testOutcomes)/length(test_preds), '\n')
+</code></pre>
+<font color = "ff0000">True accuracy: 0.4827586</font></p>
+
+<p>Hey! The universe still works!</p>
+
+<p>
+Up to this point we've done nothing wrong, and have been rewarded with an
+honest model. But suppose we had given in to temptation and thought to
+ourselves, "Awww, how bad could it be to take a peek at how well we did on the
+test data. That should tell me if I'm at least on the right track, right?"
+</p>
+
+<h3 id="Procedure">Very, Very Wrong</h3>
+<p>
+<pre><code>require(ROCR)
+preds <- prediction(predict(fit1, training), trOutcomes)
+perfs <- performance(preds, 'tpr', 'fpr')
+plot(perfs)
+</pre></code>
+<img src="roc.png" alt="Created with vim" border="0"/>
+<pre><code>perfs <- performance(preds, 'auc')
+cat('Computed AUC:', perfs@y.values[[1]], '\n')
+</pre></code>
+<font color = "ff0000">Computed AUC: 0.7829889</font><br><br>
+That is a decently swanky AUC. Too bad it has absolutely no relationship to
+reality! Imagine your disappointment if you had done this and found out that
+your model is no better than a (fair) coin flip when you deployed it in the
+real world!</p>
+
+<h3 id="Procedure">Denouement</h3>
+
+<p>The fallacy is obvious in a toy example like this, but in real life it's easy
+to imagine someone falling into this trap. To validate your model you simply
+must show it data it has never seen before! To see an analysis of a similar
+situation check out section 7.10.2 of the second edition of <a href =
+"http://www-stat.stanford.edu/~tibs/ElemStatLearn/">The Elements of Statistic
+Learning</a> by Hastie, <i>et al.</i> There they show how doing
+cross-validation to estimate test set error can go awry by using the whole
+training set to do variable selection <i>before</i> model training and
+cross-validation instead of as <i>part</i> of the cross-validation procedure.
+</p>
+<p align="right"><a href="http://home.uchicago.edu/pesyna">Home</a></p>
+</tt>
+
+</div>
+<hr>
+<a href="http://www.vim.org"><img src="vim.png" alt="Created with vim" border="0"/></a>
+</body>
