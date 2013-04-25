@@ -1,0 +1,24 @@
+body {
+    font-size: 17px;
+    font-family:'Inconsolata';
+}
+#container {
+    margin: 0 auto;
+    width: 900px;
+}
+a {text-decoration: underline;}
+a:link {text-decoration: underline; color: red}
+a:visited {text-decoration: underline; color: maroon}
+h1 {font-size: 3em; margin-bottom: 3px;}
+h2 {font-size: 1.5em; text-align: left;}
+a {}
+hr {border: 0; width: 90%; border-bottom: 1px solid #aaa}
+pre {
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -o-pre-wrap;
+    padding: 0.5em 1em;
+    border: 2px solid #000000;
+    background: #dedad0;
+}
+img.center {   display: block;   margin-left: auto;   margin-right: auto; }
